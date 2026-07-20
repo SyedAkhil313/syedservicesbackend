@@ -1,1 +1,308 @@
-# syedservicesbackend
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Dashboard — Syed's Services</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Expanded:wght@700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy-deep:#071E36; --navy:#0B3B5C; --teal:#0EA5A8; --teal-deep:#0A7B7E;
+    --coral:#FF6B4A; --coral-deep:#E8502E; --amber:#FFB020;
+    --ice:#F0FAF9; --paper:#FDFEFE; --charcoal:#14232E; --gray:#5C7887; --line:#D7EAE8;
+    --good:#22B573; --warn:#FFB020; --pending:#5C7887;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{ font-family:'Inter',sans-serif; background:var(--ice); color:var(--charcoal); min-height:100vh; }
+  .wrap{ max-width:1100px; margin:0 auto; padding:32px 24px 80px; }
+
+  /* ---- Gate ---- */
+  #gate{
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .gate-card{
+    background:var(--paper); border:1px solid var(--line); border-radius:12px;
+    padding:40px 34px; max-width:380px; width:100%; text-align:center;
+    box-shadow:0 20px 50px rgba(7,30,54,0.1);
+  }
+  .gate-card h1{ font-family:'Archivo Expanded'; font-size:20px; color:var(--navy-deep); margin-bottom:8px; text-transform:uppercase; }
+  .gate-card p{ color:var(--gray); font-size:14px; margin-bottom:24px; }
+  .gate-card input{
+    width:100%; padding:13px 14px; border:1.5px solid var(--line); border-radius:6px;
+    font-size:15px; margin-bottom:14px; text-align:center;
+  }
+  .gate-card input:focus{ outline:none; border-color:var(--teal); }
+  .gate-btn{
+    width:100%; background:linear-gradient(100deg, var(--amber), var(--coral));
+    color:var(--navy-deep); border:none; padding:13px; border-radius:6px;
+    font-weight:700; font-size:15px; cursor:pointer;
+  }
+  .gate-error{ color:var(--coral-deep); font-size:13px; margin-top:10px; display:none; }
+
+  /* ---- Dashboard ---- */
+  #dashboard{ display:none; }
+
+  .dash-header{
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;
+    margin-bottom:28px;
+  }
+  .dash-header h1{
+    font-family:'Archivo Expanded'; font-size:24px; color:var(--navy-deep); text-transform:uppercase;
+  }
+  .dash-header .sub{ color:var(--gray); font-size:14px; margin-top:4px; }
+  .refresh-btn{
+    background:var(--navy-deep); color:var(--ice); border:none; padding:11px 20px;
+    border-radius:6px; font-size:14px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px;
+  }
+  .refresh-btn:hover{ background:var(--teal-deep); }
+  .refresh-btn svg{ transition:transform .4s ease; }
+  .refresh-btn.spinning svg{ animation:spin 0.8s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  .stat-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px; }
+  @media(max-width:700px){ .stat-row{ grid-template-columns:1fr 1fr; } }
+  .stat-box{ background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:18px 20px; }
+  .stat-box .num{ font-family:'JetBrains Mono'; font-size:26px; font-weight:600; color:var(--navy-deep); }
+  .stat-box .lbl{ font-size:12.5px; color:var(--gray); text-transform:uppercase; letter-spacing:0.05em; margin-top:2px; }
+
+  .filter-row{ display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+  .filter-chip{
+    padding:8px 16px; border-radius:20px; border:1.5px solid var(--line); background:var(--paper);
+    font-size:13.5px; font-weight:600; color:var(--gray); cursor:pointer; transition:all .15s ease;
+  }
+  .filter-chip.active{ background:var(--navy-deep); color:var(--ice); border-color:var(--navy-deep); }
+
+  .order-list{ display:flex; flex-direction:column; gap:14px; }
+  .order-card{
+    background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 24px;
+    display:grid; grid-template-columns:1fr auto; gap:16px; align-items:start;
+  }
+  @media(max-width:600px){ .order-card{ grid-template-columns:1fr; } }
+
+  .order-main{ display:flex; flex-direction:column; gap:6px; }
+  .order-top{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .order-name{ font-size:16.5px; font-weight:700; color:var(--navy-deep); }
+  .order-service{ font-size:13.5px; color:var(--teal-deep); font-weight:600; }
+  .order-detail{ font-size:14px; color:var(--gray); }
+  .order-time{ font-family:'JetBrains Mono'; font-size:12px; color:var(--gray); margin-top:4px; }
+
+  .status-badge{
+    display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:20px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; width:fit-content;
+  }
+  .status-Pending{ background:rgba(92,120,135,0.12); color:var(--pending); }
+  .status-In\ Progress{ background:rgba(255,176,32,0.15); color:#B8790F; }
+  .status-Done{ background:rgba(34,181,115,0.14); color:var(--good); }
+
+  .order-actions{ display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
+  .status-select{
+    padding:9px 12px; border:1.5px solid var(--line); border-radius:6px; font-size:13.5px;
+    background:var(--paper); color:var(--charcoal); cursor:pointer;
+  }
+  .call-link{
+    font-size:13px; color:var(--teal-deep); font-weight:600; display:flex; align-items:center; gap:5px;
+  }
+
+  .empty-state{
+    text-align:center; padding:60px 20px; color:var(--gray);
+  }
+  .empty-state svg{ margin:0 auto 16px; }
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    background:var(--navy-deep); color:var(--ice); padding:12px 22px; border-radius:8px;
+    font-size:14px; opacity:0; pointer-events:none; transition:opacity .3s ease;
+  }
+  .toast.show{ opacity:1; }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-card">
+    <h1>Order Dashboard</h1>
+    <p>Enter your passcode to view Syed's Services orders.</p>
+    <input type="password" id="passcodeInput" placeholder="Passcode" autocomplete="off">
+    <button class="gate-btn" id="unlockBtn">Unlock</button>
+    <p class="gate-error" id="gateError">Incorrect passcode. Please try again.</p>
+  </div>
+</div>
+
+<div id="dashboard">
+  <div class="wrap">
+    <div class="dash-header">
+      <div>
+        <h1>Order Dashboard</h1>
+        <div class="sub" id="lastUpdated">—</div>
+      </div>
+      <button class="refresh-btn" id="refreshBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" stroke="#F0FAF9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Refresh
+      </button>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-box"><div class="num" id="statTotal">0</div><div class="lbl">Total orders</div></div>
+      <div class="stat-box"><div class="num" id="statPending">0</div><div class="lbl">Pending</div></div>
+      <div class="stat-box"><div class="num" id="statProgress">0</div><div class="lbl">In progress</div></div>
+      <div class="stat-box"><div class="num" id="statDone">0</div><div class="lbl">Completed</div></div>
+    </div>
+
+    <div class="filter-row" id="filterRow">
+      <div class="filter-chip active" data-filter="All">All</div>
+      <div class="filter-chip" data-filter="Pending">Pending</div>
+      <div class="filter-chip" data-filter="In Progress">In Progress</div>
+      <div class="filter-chip" data-filter="Done">Done</div>
+    </div>
+
+    <div class="order-list" id="orderList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Set this to the same Web App URL you used for the booking form.
+  const ORDER_ENDPOINT = "PASTE_YOUR_APPS_SCRIPT_URL_HERE";
+
+  let currentPasscode = "";
+  let allOrders = [];
+  let currentFilter = "All";
+
+  const gate = document.getElementById('gate');
+  const dashboard = document.getElementById('dashboard');
+  const gateError = document.getElementById('gateError');
+
+  document.getElementById('unlockBtn').addEventListener('click', unlock);
+  document.getElementById('passcodeInput').addEventListener('keydown', function(e){
+    if(e.key === 'Enter') unlock();
+  });
+
+  function unlock(){
+    const val = document.getElementById('passcodeInput').value.trim();
+    if(!val) return;
+    currentPasscode = val;
+    loadOrders(true);
+  }
+
+  function loadOrders(isFirstLoad){
+    const refreshBtn = document.getElementById('refreshBtn');
+    refreshBtn.classList.add('spinning');
+
+    fetch(ORDER_ENDPOINT + "?passcode=" + encodeURIComponent(currentPasscode))
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        refreshBtn.classList.remove('spinning');
+        if(data.result === "error"){
+          if(isFirstLoad){
+            gateError.style.display = 'block';
+          } else {
+            showToast("Couldn't refresh — check connection.");
+          }
+          return;
+        }
+        gate.style.display = 'none';
+        dashboard.style.display = 'block';
+        allOrders = data.orders || [];
+        document.getElementById('lastUpdated').textContent = "Last updated: " + new Date().toLocaleTimeString();
+        renderOrders();
+      })
+      .catch(function(){
+        refreshBtn.classList.remove('spinning');
+        if(isFirstLoad){
+          gateError.textContent = "Couldn't connect. Check the backend URL is set.";
+          gateError.style.display = 'block';
+        } else {
+          showToast("Couldn't refresh — check connection.");
+        }
+      });
+  }
+
+  document.getElementById('refreshBtn').addEventListener('click', function(){ loadOrders(false); });
+
+  document.getElementById('filterRow').addEventListener('click', function(e){
+    const chip = e.target.closest('.filter-chip');
+    if(!chip) return;
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    currentFilter = chip.dataset.filter;
+    renderOrders();
+  });
+
+  function renderOrders(){
+    const total = allOrders.length;
+    const pending = allOrders.filter(o => o.status === 'Pending').length;
+    const progress = allOrders.filter(o => o.status === 'In Progress').length;
+    const done = allOrders.filter(o => o.status === 'Done').length;
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statPending').textContent = pending;
+    document.getElementById('statProgress').textContent = progress;
+    document.getElementById('statDone').textContent = done;
+
+    const list = document.getElementById('orderList');
+    const filtered = currentFilter === 'All' ? allOrders : allOrders.filter(o => o.status === currentFilter);
+
+    if(filtered.length === 0){
+      list.innerHTML = '<div class="empty-state"><svg width="48" height="48" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke="#5C7887" stroke-width="1.5"/></svg><p>No orders here yet.</p></div>';
+      return;
+    }
+
+    list.innerHTML = filtered.map(function(o){
+      return '<div class="order-card">' +
+        '<div class="order-main">' +
+          '<div class="order-top">' +
+            '<span class="order-name">' + escapeHtml(o.name) + '</span>' +
+            '<span class="status-badge status-' + o.status.replace(' ', '\\ ') + '">' + o.status + '</span>' +
+          '</div>' +
+          '<div class="order-service">' + escapeHtml(o.service) + '</div>' +
+          '<div class="order-detail">' + escapeHtml(o.address) + '</div>' +
+          (o.notes ? '<div class="order-detail">Note: ' + escapeHtml(o.notes) + '</div>' : '') +
+          '<div class="order-time">' + escapeHtml(String(o.timestamp)) + '</div>' +
+        '</div>' +
+        '<div class="order-actions">' +
+          '<a class="call-link" href="tel:' + escapeHtml(o.phone) + '">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6.6 10.8C8 13.6 10.4 16 13.2 17.4L15.4 15.2C15.7 14.9 16.1 14.8 16.5 14.9C17.7 15.3 19 15.5 20.3 15.5C20.9 15.5 21.3 15.9 21.3 16.5V20.3C21.3 20.9 20.9 21.3 20.3 21.3C10.7 21.3 3 13.6 3 4C3 3.4 3.4 3 4 3H7.8C8.4 3 8.8 3.4 8.8 4C8.8 5.3 9 6.6 9.4 7.8C9.5 8.2 9.4 8.6 9.1 8.9L6.6 10.8Z" stroke="#0A7B7E" stroke-width="1.6"/></svg>' +
+            escapeHtml(o.phone) +
+          '</a>' +
+          '<select class="status-select" onchange="updateStatus(' + o.rowIndex + ', this.value)">' +
+            '<option value="Pending"' + (o.status === 'Pending' ? ' selected' : '') + '>Pending</option>' +
+            '<option value="In Progress"' + (o.status === 'In Progress' ? ' selected' : '') + '>In Progress</option>' +
+            '<option value="Done"' + (o.status === 'Done' ? ' selected' : '') + '>Done</option>' +
+          '</select>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function updateStatus(rowIndex, newStatus){
+    fetch(ORDER_ENDPOINT, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'updateStatus', rowIndex: rowIndex, status: newStatus, passcode: currentPasscode })
+    }).then(function(){
+      showToast('Status updated to "' + newStatus + '"');
+      const order = allOrders.find(o => o.rowIndex === rowIndex);
+      if(order) order.status = newStatus;
+      renderOrders();
+    }).catch(function(){
+      showToast('Could not update — check connection.');
+    });
+  }
+
+  function showToast(msg){
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(function(){ toast.classList.remove('show'); }, 2600);
+  }
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+</script>
+
+</body>
+</html>
